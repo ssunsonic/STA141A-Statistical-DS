@@ -1,0 +1,184 @@
+vf---
+title: "STA141A HW1"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Macbook Specs:
+- 16 inch (2019)
+- 8-Core Intel i9
+- 16 GB
+- Intel UHD Graphics 630 1536 MB
+
+#Problem 1 - Defining Function Coupon
+```{r}
+coupon_mean_sd <- function(n) {
+    p <- 1-(0:(n-1))/n
+    m <- sum(1/p)
+    sd <- sqrt(sum((1-p)/(p^2)))
+    return(c(m,sd))
+}
+```
+
+```{r}
+coupon_mean_sd(25)
+coupon_mean_sd(50)
+coupon_mean_sd(100)
+```
+
+#Problem 2 - Comparing slow and fast for different replications and sample sizes
+```{r}
+#slow
+coupon_slow <- function(n) {
+  coupons <- rep(0L, n)
+  while (any(coupons == 0L)) {
+    new_coupon <- sample.int(n, 1)
+    coupons[new_coupon] <- coupons[new_coupon] + 1
+    }
+  sum(coupons)
+}
+
+#fast
+coupon_fast <- function(n) {
+  p <- 1 - (0:(n-1))/n
+  x <- rgeom(n, p) ## R counts only failures
+  n + sum(x) ## so add n * 1 = n to get the total
+}
+```
+
+```{r}
+system.time(replicate(10000,coupon_slow(25)))
+system.time(replicate(10000,coupon_fast(25)))
+
+system.time(replicate(10000,coupon_slow(50)))
+system.time(replicate(10000,coupon_fast(50)))
+
+system.time(replicate(10000,coupon_slow(100)))
+system.time(replicate(10000,coupon_fast(100)))
+```
+The ratio at which coupon_slow is slower than coupon_fast depends on the number
+of trials. The greater the number of trials, the greater the ratio. 
+
+#Problem 3 
+#a.)
+```{r}
+S <- replicate(10000,coupon_fast(50))
+mean(S)
+sd(S)
+```
+The sample and theoretical mean and sd have a small marginal error, so they
+agree reasonably well. 
+
+#b.) 
+```{r}
+hist(S, nclass = 25)
+```
+
+#c.)
+```{r}
+quantile(S, probs=c(.1,.5,.9))
+```
+
+#Problem 4
+```{r}
+mcoupon_fast <- function(n, m) {
+  coupons <- rep(0L, n) # Will count each one until we have m of that coupon, then stop, print out n 0s
+  incomplete <- (coupons < m) #returns TRUE if there is a value in coupon less than m
+  S <- 0 #initial coupon count
+  while (any(incomplete)) { #if condition for m is not yet satisfied
+    k <- sum(incomplete) # Number of coupons with fewer than m accumulated so far
+    x <- rgeom(1, k/n) + 1 # Successes getting any one of the coupons we still need, rgeom returns number of failures before success
+    S <- S + x # Update number of purchases
+    y <- sample.int(k, 1) # Which of the not-yet-completed coupons did we draw
+    coupons[incomplete][y] <- coupons[incomplete][y] + 1 # Increment incomplete coupon counts
+    incomplete <- (coupons < m)
+    }
+  S
+}
+```
+
+#Mcoupon_slow Function
+```{r}
+mcoupon_slow <- function(n,m) {
+  coupons <- rep(0L, n)
+  incomplete <- (coupons < m)
+  while (any(incomplete)) {
+    new_coupon <- sample.int(n, 1)
+    coupons[new_coupon] <- coupons[new_coupon] + 1
+    incomplete <- (coupons < m)
+    }
+  sum(coupons)
+}
+```
+
+#b.)
+```{r}
+m2 <- replicate(10000,mcoupon_fast(50,2))
+mean(m2)
+sd(m2)
+quantile(m2, probs=c(.1,.5,.9))
+```
+
+#c.)
+```{r}
+m3 <- replicate(10000,mcoupon_fast(50,3))
+mean(m3)
+sd(m3)
+quantile(m3, probs=c(.1,.5,.9))
+```
+
+#Bonus
+
+```{r}
+head(mtcars)
+```
+#Regression Model
+```{r}
+reg <- lm(mpg ~ wt + disp, data = mtcars)
+```
+
+#Question 1
+```{r}
+X <- model.matrix(reg) #design matrix
+Y = mtcars$mpg
+
+QR <- qr(X)
+Q <- qr.Q(QR)
+R <- qr.R(QR)
+```
+
+#Solutions to XTX
+```{r}
+x <- solve(t(X)%*%X)
+x1 <- solve(t(Q%*%R)%*%(Q%*%R))
+
+x
+x1
+```
+
+#Question 2
+```{r}
+standard_res <- sqrt(abs(reg$residuals/sd(reg$residuals)))
+plot(reg$fitted.values, standard_res, main = "Scale-Location Plot",
+     xlab = "Fitted Values", ylab = "Root of Standard Residuals",
+     ylim = c(0,1.5))
+lines(lowess(reg$fitted.values,standard_res), col = 'red')
+```
+Extra Notes:
+Scale-location plot is a plot that displays
+fitted values of regression model along x-axis and
+square root of standardized residuals along y-axis
+
+Check that:
+- red line is roughly horizontal (homoscedastic)
+- no obvious patterns; means randomly scattered errors; roughly equal variability at all fitted values
+
+# Code Appendix
+```{r, ref.label=knitr::all_labels(),echo=TRUE,eval=FALSE}
+```
