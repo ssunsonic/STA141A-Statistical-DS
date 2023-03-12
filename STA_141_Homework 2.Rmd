@@ -1,0 +1,268 @@
+---
+title: "STA 141A Fundamentals of Statistical Data Science - Homework 2"
+params:
+  term: Winter 2023
+  duedate: '2023-03-08'
+  name: ERIC SUN
+  email: ETSUN@UCDAVIS.EDU
+  total_points: XX
+  grade: NA
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+# packages
+library(ggplot2)
+```
+
+
+```{r as_ordinal, include = TRUE, echo = FALSE}
+ord_suffix <-
+    function(x) switch(as.character(x), "1"="st", "2"="nd", "3"="rd", "th")
+as_ordinal <- function(x) paste0(x, ord_suffix(x))
+```
+
+# Exercises
+
+1.After executing the command
+
+```{r eval=FALSE, include=TRUE}
+z <- rep(c(rep(x, each = a), rep(y, each = b)), times = t)
+```
+which element of x or y is contained in the kth element of z?. Suppose that x and y are vectors in R of lengths m and n,
+respectively.  Write a function, `rep_tracker(k, m, n, a, b, t)`, which computes
+the answer for any positive integers k, m, n, a, b, and t.  Your
+function should return a list whose first element is named
+"src_vector" and gives the name of the vector ("x" or "y") and
+whose second element is named "src_index" and gives the integer
+indicating the original location of the value in either "x" or "y".
+For example, if the kth element of z was originally the 5 element
+of y, then your function should return `list(src_vector = "y",
+src_index = 5)`.
+
+Your may not use the `rep()` function in your solution.  Your function
+should emulate the way that a human might solve this problem using
+integer arithmetic.
+
+# Solution
+
+```{r, echo = TRUE}
+rep_tracker <- function(k, m, n, a, b, t) {
+    if (k > (t * (m * a + n * b))) warning("First argument is out of range")
+    
+    r <- k %% (m*a + n*b) #remainder
+    
+    if (r == 0L){ # if remainder = 0; it is in y
+      v = "y"
+      i = n # index is just last value of y (length of y)
+    }
+    else if (r <= m*a){
+      v = "x"
+      d = a
+      i = ceiling(r/d) # use remainder divided by length of x plus (ceiling: to account for repetitions) to find index 
+    } else {
+      v = "y"
+      r = r - (m*a)
+      d = b
+      i = ceiling(r/b)
+    }
+    
+    list(src_vector = v, src_index = i)
+}
+```
+
+<Br>
+<Br>
+
+##### __2. Consider the report:  [A PHASE 1/2/3, PLACEBO-CONTROLLED, RANDOMIZED, OBSERVER-BLIND, DOSE-FINDING STUDY TO EVALUATE THE SAFETY, TOLERABILITY, IMMUNOGENICITY, AND EFFICACY OF SARS-COV-2 RNA VACCINE CANDIDATES AGAINST COVID-19 IN HEALTHY INDIVIDUALS (pages 99-101)]. Let $\theta$ be the probability that a subject who fell ill with Covid-19 is from the treatment group and $1-\theta$  the probability that the subject is from the control group. Assuming that 94 subjects fell ill to Covid-19 (with a sample efficacy above 90%) and at most 8 of those 94 subjects were vaccinated. Write a report (Introduction, Methods, Results and Conclusions) assuming:__
+
+<Br>
+
+ __a. A Beta prior for $\theta$: $p(\theta)$=Beta$($a=0.5,b=0.5$)$, where $a$ and $b$ are the shape parameters
+ of the Beta distribution. Plot the prior, likelihood and posterior as function of $\theta$.__
+ 
+<Br>
+
+#### __Introduction__
+
+To test the effectiveness and safety of their new vaccine against COVID-19, Biontech and Pfizer conducted a case study using the Bayesian 
+analysis framework to update and uphold their credible beliefs on the matter. Given that the two groups (treatment vs control) were assigned the same number of subjects, $\theta$ represented the probability that a subject who fell ill with COVID-19 was from the treatment and $1-\theta$ represented the probability for the control group. 
+In their study, they assumed having a prior distribution of:
+__$$\theta=(1−VE)/(2−VE)$$__
+The assumed prior distribution of $\theta$ for this study is a Beta distribution with shape parameters a=a0=0.5 and b=b0=0.5. 
+The prior mean of $\theta$ is thus given by:
+__$$E(\theta)=a_{0}/(a_{0}+b_{0})=0.5$$__
+Therefore, the vaccine efficacy:
+$$VE=(1−2\theta)/(1−\theta)$$
+at $\theta=0.5$ is 0%, as proposed by Biontech and Pfizer. This makes sense, as our prior parameters reflect that there is an equal probability of getting COVID-19 whether a subject is vaccinated or not, which questions the true effectiveness of the vaccine. In addition for this study, we have 94 ill subjects with a sample efficacy above 90%, and we assume that at most 8 of those subjects that had COVID-19 were vaccinated. To test whether the vaccine is effective, I will construct the prior, likelihood, and posterior models, evaluate the credible, vaccine efficacy, and confidence intervals, and plot the posterior empirical predictive density model.
+
+
+<Br>
+
+#### __Models__
+
+```{r, echo = FALSE}
+a = 0.5
+b = 0.5
+n = 94 #number of ill subjects
+successes = 8 #treatment group
+theta = seq(0, 1, length = 1000)
+
+#likelihood and posterior parameters
+likelihood_a = successes + 1; likelihood_b = n - successes + 1
+posterior_a = a + successes; posterior_b = b + n - successes
+
+#prior,likelihood, and posterior distributions
+prior <- dbeta(theta,a,b)
+likelihood <- dbeta(theta, likelihood_a, likelihood_b)
+posterior <- dbeta(theta, posterior_a, posterior_b)
+
+a0 = 0.5; b0 = 0.5
+ggplot(data = data.frame(x = c(0, 1)), aes(x)) +
+  stat_function(geom="area",fun = dbeta, n = 101,
+    args = list(shape1 = a0, shape2 = b0),
+    col="red", fill="red", alpha=0.5
+  ) +
+  ylab("Prior") + xlab(expression(theta)) + geom_vline(xintercept=0.5)+
+  ggtitle("Prior: Probability that a subject with Covid-19 was vaccinated")  
+
+a1 = likelihood_a; b1 = likelihood_b
+ggplot(data = data.frame(x = c(0, 1)), aes(x)) +
+  stat_function(geom="area",fun = dbeta, n = 101,
+    args = list(shape1 = a1, shape2 = b1),
+    col="blue", fill="blue", alpha=0.5
+  ) +
+  ylab("Likelihood") + xlab(expression(theta)) + geom_vline(xintercept = a1/(a1+b1))+
+  ggtitle("Likelihood that a subject has COVID-19 given theta") 
+
+a2 = posterior_a; b2 = posterior_b
+ggplot(data = data.frame(x = c(0, 1)), aes(x)) +
+  stat_function(geom="area",fun = dbeta, n = 101,
+    args = list(shape1 = a2, shape2 = b2),
+    col="black", fill="red", alpha=0.5
+  ) +
+  ylab("Posterior") + xlab(expression(theta)) + geom_vline(xintercept=a2/(a2+b2))+
+  ggtitle("Posterior if 8 out of 94 subjects were vaccinated")  
+```
+<Br>
+
+<Br>
+
+#### __Interpretation__
+
+Our parameters for the prior (a = b = 0.5) generated a U-shaped, symmetrical graph
+with the center at $\theta=0.5$. For the likelihood (parameters = (9,87)) and posterior (parameters = (8.5,86.5)) graphs, the distribution 
+and shape are almost identical. This is due to the prior being non-informative, which 
+means that theta is mainly determined by the data. Because of this, the posterior shifted
+far down to the left, which decreased our theta based on the observations. The posterior
+shows that our possible distribution for the theta parameter distribution is lower than what is was
+in the prior, and indicates that the probability of a vaccinated subject that has COVID-19
+is actually smaller than the probability of a subject having COVID-19 in the control group.
+
+
+<Br>
+
+ __b. Compute the posterior probability of having a value of $\theta>0.4118$.__
+ 
+```{r, echo = FALSE}
+prob = 1 - pbeta(0.4118,posterior_a,posterior_b)
+cat("The posterior probability of having a value of theta greater than .4118 is",prob)
+```
+
+Biontech/Pfizer stated as interim success criterion that the posterior probability of an efficacy below 30% (corresponding to $\theta>0.4118$) is smaller than 2.5%. After conducting the posterior, we conclude that the probability that a subject that was
+vaccinated has COVID-19 is 5.82645e-13 at $\theta>0.4118$, which is almost 0%. We see that the probability of observing the posterior probability of an efficacy below 30% is extraordinarily small, thus passes the interim success criterion. We can also state that since the probability of the probability that a subject who fell ill is from the treatment group that is greater than theta > .4118 is very small, it indicates that those in the treatment group have a greater chance of not having COVID-19 compared to those in the control, which shows the vaccines effectiveness.
+
+<Br>
+
+ __c. Compute a 95\%  credible and confidence intervals.__
+ 
+```{r, echo = FALSE}
+#credible interval
+theta.credible.interval = qbeta(c(0.025,0.975),posterior_a,posterior_b)
+cat("The values for the credible interval are",round(theta.credible.interval*100,1))
+
+#VE interval
+VE.credible.interval = rev((1-2*theta.credible.interval)/(1-theta.credible.interval))
+cat("\nThe values for the vaccine efficacy interval are",round(VE.credible.interval*100,1))
+
+#confidence interval
+confidence = qbeta(c(.025,.975),successes+1,n-successes+1)
+cat("\nThe values for the confidence interval are",round(confidence*100,1))
+
+VE.conf.interval = rev((1-2*confidence)/(1-confidence))
+cat("\nThe values for the vaccine efficacy confidence interval are",round(VE.conf.interval*100,1))
+```
+
+Given our belief and data, we believe with 95% probability that the probability
+that an ill subject is vaccinated is between 4.1% and 15.4%. This means that
+we would be 95% confident that the vaccine reduces the risk of getting COVID
+between 81.8% and 95.7%. For the confidence interval, we are 95% confident that
+an ill subject is vaccinated is between 4.4% and 15.9%. This can also be translated as
+we are 95% confident that the vaccine reduces the risk of getting COVID between
+81.1% and 95.4%. We observe that the Bayesian credible interval is close to the
+frequentist confidence interval.
+
+
+<Br>
+
+ __d.  Plot the posterior empirical predictive density. If a new sample of 94 subjects with Covid-19 is taken, how many subjects were vaccinated?.__
+
+```{r, echo = FALSE}
+#generate 10k simulations of posterior distribution
+post_data = rbeta(10000,posterior_a,posterior_b)
+#histogram for theta vales
+hist(post_data, main = "Theta Distribution for Posterior", xlab = "Thetas")
+abline(v = posterior_a/(posterior_a+posterior_b), col = "red")
+
+#posterior predictive density
+post_density <- rbinom(10000,94,post_data)
+hist(post_density, freq = FALSE, main = "Posterior Emperirical Predictive Density",
+     xlab = "# of Subjects")
+abline(v = posterior_a/(posterior_a+posterior_b) * 94, col = "red")
+
+#expected number of subjects vaccinated for a new sample
+expected <- posterior_a/(posterior_a+posterior_b)
+subjects <- expected*94
+cat("The expected amount of vaccinated subjects if we have a new sample of 94 subjects is:", subjects)
+```
+
+I generated 10000 samples from the posterior distribution to obtain a range
+of practical thetas (post_data). We see that most of our data lies
+within the .05-.15 range, and the mean, median, and standard deviation are .08932,
+.08687, and .02883, respectively. After generating the distribution of thetas, I 
+generated the posterior predictive density plot by plugging in the post_data into
+the parameters for rbinom(). To calculate how many subjects were vaccinated for
+a new sample of 94 subjects, I used the previous definition of the expected theta, 
+plugged in the posterior parameters, and multiplied the expected theta by the number
+of subjects. The result was 8.410526 subjects ~> 8 subjects.
+
+<Br>
+
+#### __Conclusion__
+
+From our results, we saw that:
+
+1.) The prior, likelihood, and posterior plots show how the theta distribution is more condensed towards smaller values of theta (posterior), which indicates that the probability of a vaccinated subject having COVID-19 is smaller compared to the control group.
+
+2.) The criteria for success at an interim analysis based on the posterior probability (P[VE > 30% given data]) at the current number of cases was met. 
+
+3.) The confidence and credible intervals show that around ~ min[4] to max[16] %  of vaccinated people are ill with 95% confidence. The VE intervals show that having the vaccine reduces the risk of catching COVID by ~ min[80] to max[96]%.
+
+Thus, we can conclude that subjects who are vaccinated have a much greater chance of not getting COVID-19 compared to those who are not.
+
+<Br> 
+<Br>
+
+
+# Code Appendix
+```{r, ref.label=knitr::all_labels(),echo=TRUE,eval=FALSE}
+```
+
+
+
+
+
+
