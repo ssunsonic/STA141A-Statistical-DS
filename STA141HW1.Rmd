@@ -1,4 +1,4 @@
-vf---
+---
 title: "STA141A HW1"
 output:
   pdf_document: default
