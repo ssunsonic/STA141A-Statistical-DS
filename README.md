@@ -6,3 +6,5 @@ Concepts and topics learned:
 - Bayesian Statistics and Analysis
 - Data Cleaning
 - ML methods and algorithms
+- Time Series Application
+
