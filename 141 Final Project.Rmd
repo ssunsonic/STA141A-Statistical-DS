@@ -1,0 +1,308 @@
+---
+title: "STA 141 - Fundamentals of Statistical Data Science - Final project"
+params:
+  term: Winter 2023
+  duedate: '2023-03-24'
+  name: ERIC SUN + WILSON ZHOU
+  email: etsun@ucdavis.edu
+  total_points: XX
+  grade: NA
+output: 
+   pdf_document: default
+   html_document: default
+---
+
+
+
+
+# Working with the New York Times COVID-19 Data
+
+As we have seen in class, COVID-19 data collected by the *New York
+Times* are available in a repository on Github.  In this final project we
+will work with these data to reproduce some of the elements of the
+*Times*'s reporting on COVID-19.  
+
+```{r include = FALSE, echo = TRUE} 
+diff.eg <- quote(diff(c(1, 3, 6, 10)))
+```
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+library(tidyverse)
+```
+
+
+# Exercises
+
+1. The file `us.csv` contains aggregated data for the entire U.S.  In
+   this file, the `cases` and `deaths` columns represent *cumulative*
+   cases and deaths due to covid. The `diff()` function can be used to
+   compute the differences between each consecutive element of a
+   vector, so it could be used to compute the daily numbers of cases
+   and deaths.  However, `diff()` returns a vector of length one less
+   than the length of the original vector (e.g., `r noquote(deparse(diff.eg))`
+   returns `r eval(diff.eg)`) and this can make it somewhat
+   inconvenient to use when transforming columns of data frames.
+   
+   An alternative is to us the more general `filter()` function with
+   an appropriate choice of the `filter` and `sides` arguments.  Thus function
+   can also be used to computing running averages and similar quantities.
+   
+    a. Read the file `us.csv` into R as the data frame `us` and do the
+       following:
+       
+```{r}
+us <- read.csv("us.csv")
+# transform to Date class
+us$date <- as.Date(us$date)
+```
+          
+```{r}
+us$cases = as.ts(us$cases)
+us$new_cases <- c(stats::filter(us$cases, c(1,-1), sides=1))
+```
+          
+```{r}
+us$deaths = as.ts(us$deaths)
+us$new_deaths <- c(stats::filter(us$deaths, c(1,-1), sides=1))
+```
+     	    
+```{r}
+us$avg_new_cases = c(stats::filter(us$new_cases, rep.int(1/7,7), sides = 1))
+us$avg_new_cases = round(us$avg_new_cases,2)
+```
+     	    
+```{r}
+us$avg_new_deaths = c(stats::filter(us$new_deaths, rep.int(1/7,7), sides = 1))
+us$avg_new_deaths = round(us$avg_new_deaths,2)
+```
+			
+      
+    b. Create a plot of daily cases similar to the one found at the top of [this 
+       page](https://www.nytimes.com/interactive/2020/us/coronavirus-us-cases.html).
+       Plot only data beginning from 2020-03-01.
+       
+```{r, echo = FALSE}
+us_new = subset(us, date >= "2020-03-01")
+
+plot(us_new$date, us_new$new_cases, type = "h", col = "salmon",
+     main = "Daily Cases of COVID19 in the US from March 2020-",
+     xlab = "Dates",
+     ylab = "Cases")
+lines(us_new$date, us_new$avg_new_cases, col = "red", lwd = 2)
+legend(x = "topright",legend = c("Daily Cases","Average New Cases"), col = c("salmon","red"),  
+       lwd = 2) 
+```
+
+    c. Repeat part (b) for deaths.
+    
+```{r, echo = FALSE}
+plot(us_new$date, us_new$new_deaths, type = "h", col = "salmon",
+     main = "Daily Deaths of COVID19 in the US from March 2020-",
+     xlab = "Dates",
+     ylab = "Deaths")
+lines(us_new$date, us_new$avg_new_deaths, col = "red", lwd = 2)
+legend(x = "topright",legend = c("Daily Deaths","Average New Deaths"), col = c("salmon","red"),  
+       lwd = 2) 
+```
+    
+
+2. The file `us-states.csv` contains county-level data for the U.S.
+
+    a. Read `us-states.csv` into R as the data frame `us_states`
+       and transform the date column into a column of class `Date`.
+	   
+```{r}
+us_states <- read.csv("us-states.csv")
+us_states$date <- as.Date(us_states$date)
+```
+
+
+    b. Use `subset()` to extract the data for the state of California
+       and save it as a data frame named `California`. Be sure that the
+       rows are correctly ordered by date, and then repeat parts 1b
+       and 1c of this assignment for California, i.e., plot the number of
+       daily new cases and deaths, along with their 7-day running averages.
+
+```{r, echo = FALSE}
+California = subset(us_states, state == "California")
+California = California[order(California$date),]
+
+California$new_cases <- c(stats::filter(California$cases, c(1,-1), sides=1))
+California$new_deaths <- c(stats::filter(California$deaths, c(1,-1), sides=1))
+California$avg_new_cases = c(stats::filter(California$new_cases, rep.int(1/7,7), sides = 1))
+California$avg_new_cases = round(California$avg_new_cases,2)
+California$avg_new_deaths = c(stats::filter(California$new_deaths, rep.int(1/7,7), sides = 1))
+California$avg_new_deaths = round(California$avg_new_deaths,2)
+
+California_new = subset(California, date >= "2020-03-01")
+
+plot(California_new$date, California_new$new_cases, type = "h", col = "salmon",
+     main = "Daily Cases of COVID19 in California from March 2020-",
+     xlab = "Dates",
+     ylab = "Cases")
+lines(California_new$date, California_new$avg_new_cases, col = "red", lwd = 2)
+legend(x = "topright",legend = c("Daily Cases","Average New Cases"), col = c("salmon","red"),  
+       lwd = 2)  
+
+plot(California_new$date, California_new$new_deaths, type = "h", col = "salmon",
+     main = "Daily Deaths of COVID19 in California from March 2020-",
+     xlab = "Dates",
+     ylab = "Deaths")
+lines(California_new$date, California_new$avg_new_deaths, col = "red", lwd = 2)
+legend(x = "topright",legend = c("Daily Deaths","Average New Deaths"), col = c("salmon","red"),  
+       lwd = 2) 
+```
+
+
+3. The file `us-counties.csv` contains county-level data for the U.S.
+
+    a. Read `us-counties.csv` into R as the data frame `us_counties`
+       and transform the date column into a column of class `Date`.
+
+```{r}
+us_counties <- read.csv("us-counties.csv")
+us_counties$date <- as.Date(us_counties$date)
+```
+
+    b. Use `subset()` to extract the data for Yolo County, California,
+       and save it as a data frame named `Yolo`. Be sure that the
+       rows are correctly ordered by date, and then repeat part 1b
+       this assignment for Yolo County, i.e., plot the number of daily new
+       cases along with their 7-day running average. 
+	   
+```{r, echo = FALSE}
+Yolo = subset(us_counties, county == "Yolo")
+Yolo = Yolo[order(Yolo$date),]
+
+Yolo$new_cases <- c(stats::filter(Yolo$cases, c(1,-1), sides=1))
+Yolo$new_deaths <- c(stats::filter(Yolo$deaths, c(1,-1), sides=1))
+Yolo$avg_new_cases = c(stats::filter(Yolo$new_cases, rep.int(1/7,7), sides = 1))
+Yolo$avg_new_cases = round(Yolo$avg_new_cases,2)
+Yolo$avg_new_deaths = c(stats::filter(Yolo$new_deaths, rep.int(1/7,7), sides = 1))
+Yolo$avg_new_deaths = round(Yolo$avg_new_deaths,2)
+
+Yolo_new = subset(Yolo, date >= "2020-03-01")
+
+plot(Yolo_new$date, Yolo$new_cases, type = "h", col = "salmon",
+     main = "Daily Cases of COVID19 in Yolo County from March 2020-",
+     xlab = "Dates",
+     ylab = "Cases")
+lines(Yolo_new$date, Yolo_new$avg_new_cases, col = "red", lwd = 2)
+legend(x = "topright",legend = c("Daily Cases","Average New Cases"), col = c("salmon","red"),  
+       lwd = 2) 
+
+plot(Yolo_new$date, Yolo_new$new_deaths, type = "h", col = "salmon",
+     main = "Daily Deaths of COVID19 in Yolo County from March 2020-",
+     xlab = "Dates",
+     ylab = "Deaths")
+lines(Yolo_new$date, Yolo_new$avg_new_deaths, col = "red", lwd = 2)
+legend(x = "topright",legend = c("Daily Deaths","Average New Deaths"), col = c("salmon","red"),  
+       lwd = 2) 
+```
+	   
+	   
+	   Q: What do you notice when comparing the plot of daily new cases
+     in Yolo county to the analogous plot for the state of
+	   California as a whole?  What might explain what you are seeing?
+	   
+	   <Br>
+	   
+	   The plots of daily new cases for both Yolo County and California seem to have similar trends/distributions.
+	   They both had distinct peaks, indicating a rapid influx of cases, around 2021 and especially during the start
+	   of 2022. 
+	   
+	   (Note: data for Yolo County has not been updated since May 2022, so
+	   we cannot visualize how the trends compare to California beyond then). 
+	   
+	   However, when we take the peak in the year 2022, the cases in Yolo county compared to the cases in California as a        whole accounts for 0.5% of the total in California. This could be the case because the people of Yolo county are very      careful and good at practicing social distancing.
+	   The reason for these peaks may be due to a variety of reasons, including: origin of new variants,
+	   looser restrictions on mask + social distancing policies and enforcement,
+	   increased travel/vacation plans during winter break that led to greater risk 
+	   of obtaining the virus, etc.
+	   
+	   Additional Note: Some graphs display negative values for Daily Cases and Daily Deaths.
+	   This indicates an error in the data collection process, as it is not possible to have
+	   a case or death count below 0.
+	 
+### __Negative Values__
+```{r}
+us_new[us_new$new_cases < 0,] # US data: new cases
+us_new[us_new$new_deaths < 0,] # US data: new deaths
+California_new[California_new$new_cases < 0,] # Cali data: new cases
+California_new[California_new$new_deaths < 0,] # Cali data: new deaths
+Yolo_new[Yolo_new$new_cases < 0, ] # Yolo data: new cases
+Yolo_new[Yolo_new$new_deaths < 0, ] # Yolo data: new deaths
+```
+
+4. Bonus 	   
+
+```{r, echo = FALSE}
+library(maps) # gives us pre-drawn map data
+
+states <- map_data("state") # map data for states
+
+us_states = us_states %>% arrange(state)
+
+us_states$new_cases <- c(stats::filter(us_states$cases, c(1,-1), sides=1))
+us_states$new_deaths <- c(stats::filter(us_states$deaths, c(1,-1), sides=1))
+
+us_states$avg_new_cases = c(stats::filter(us_states$new_cases, rep.int(1/7,7), sides = 1))
+us_states$avg_new_cases = as.integer(us_states$avg_new_cases)
+
+us_states$avg_new_deaths = c(stats::filter(us_states$new_deaths, rep.int(1/7,7), sides = 1))
+us_states$avg_new_deaths = round(us_states$avg_new_deaths,2)
+  
+us_states$region = tolower(us_states$state)
+us_states_heatmap = left_join(states, us_states, multiple = "all")
+
+us_states_heatmap = subset(us_states_heatmap, date > "2023-03-13")
+us_states_heatmap
+```
+
+### __Heatmaps for States: COVID-19 Avg Cases and Deaths__
+```{r, echo = FALSE}
+ggplot(data = us_states_heatmap, mapping = aes(x = long, y = lat, group = group, fill = avg_new_cases)) +
+  geom_polygon(color = "gray90", size = .05) + coord_map(projection = "albers", lat0 = 39, lat1 = 45) +
+  theme(legend.position = "bottom") + labs(title = "Average New COVID-19 Cases per State", fill = "Average New 
+                                           Cases per week")
+
+ggplot(data = us_states_heatmap, mapping = aes(x = long, y = lat, group = group, fill = avg_new_deaths)) +
+  geom_polygon(color = "gray90", size = .05) + coord_map(projection = "albers", lat0 = 39, lat1 = 45) +
+  theme(legend.position = "bottom") + labs(title = "Average New COVID-19 Deaths per State", fill = "Average New Deaths per week")
+```
+
+
+```{r, echo = FALSE}
+counties <- map_data("county")
+
+us_counties = us_counties %>% arrange(county)
+
+us_counties$new_cases <- c(stats::filter(us_counties$cases, c(1,-1), sides=1))
+us_counties$new_deaths <- c(stats::filter(us_counties$deaths, c(1,-1), sides=1))
+us_counties$avg_new_cases = c(stats::filter(us_counties$new_cases, rep.int(1/7,7), sides = 1))
+us_counties$avg_new_cases = as.integer(us_counties$avg_new_cases)
+us_counties$avg_new_deaths = c(stats::filter(us_counties$new_deaths, rep.int(1/7,7), sides = 1))
+us_counties$avg_new_deaths = round(us_counties$avg_new_deaths,2)
+
+us_counties$subregion = tolower(us_counties$county)
+us_counties <- us_counties %>% arrange(state,subregion)
+us_counties = subset(us_counties, date > "2022-05-06")
+
+us_counties_heatmap = left_join(counties, us_counties, by = "subregion", multiple = "all")
+```
+
+### __Heatmaps for Counties for Last Week in Dataset (Week of May 7th, 2022): COVID-19 Avg Cases and Deaths__
+```{r, echo = FALSE}
+ggplot(data = us_counties_heatmap, mapping = aes(x = long, y = lat, group = group, fill = avg_new_cases)) +
+  geom_polygon(color = "gray90", size = .05) + coord_map(projection = "albers", lat0 = 39, lat1 = 45) +
+  theme(legend.position = "bottom") + labs(title = "Average New COVID-19 Cases per County", fill = "Average New Cases per week")
+
+ggplot(data = us_counties_heatmap, mapping = aes(x = long, y = lat, group = group, fill = avg_new_deaths)) +
+  geom_polygon(color = "gray90", size = .05) + coord_map(projection = "albers", lat0 = 39, lat1 = 45) +
+  theme(legend.position = "bottom") + labs(title = "Average New COVID-19 Deaths per County", fill = "Average New Deaths per week")
+```
+
+
+# Code Appendix
+```{r, ref.label=knitr::all_labels(),echo=TRUE,eval=FALSE}
+```
